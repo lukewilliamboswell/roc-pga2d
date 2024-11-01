@@ -1,3 +1,3 @@
 package [
-    Geometry,
+    PGA2D,
 ] {}
