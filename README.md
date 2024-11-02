@@ -1,5 +1,3 @@
-# 2D Geometry
+# 2D Euclidean Projective Geometric Algebra (PGA)
 
-A 2D Projective Geometric Algebra library for Roc.
-
-**Status**: Work in progress.
+**Status** Work in Progress - includes the basic operators, but need to add more helpers and examples
