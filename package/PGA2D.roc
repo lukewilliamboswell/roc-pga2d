@@ -131,6 +131,7 @@ point : { x : F32, y : F32 } -> Multivector
 point = \{ x, y } -> { s: 0.0, e0: 0.0, e1: 0.0, e2: 0.0, e01: y, e20: x, e12: 0.0, e012: 1.0 }
 
 ## Meet (wedge, outer product)
+## Used for intersections
 ## e.g. intersect two Lines to get a Point
 meet : Multivector, Multivector -> Multivector
 meet = \a, b -> {
@@ -145,6 +146,7 @@ meet = \a, b -> {
 }
 
 ## Join (vee, regressive product)
+## Used for joins
 ## e.g. join two Points to get a Line
 join : Multivector, Multivector -> Multivector
 join = \a, b -> {
@@ -159,7 +161,10 @@ join = \a, b -> {
 }
 
 ## Dot (scalar / inner product)
+## Used for for projections
 ## e.g. dot two Lines to get a scalar
+## - dot two perpendicular lines = 0
+## - dot two parallel lines = 1
 dot : Multivector, Multivector -> Multivector
 dot = \a, b -> {
     s: b.s * a.s + b.e1 * a.e1 + b.e2 * a.e2 - b.e12 * a.e12,
@@ -173,8 +178,10 @@ dot = \a, b -> {
 }
 
 ## Multiply (geometric product)
+## Used for Reflections, Rotations, Translations
 mul : Multivector, Multivector -> Multivector
 mul = \a, b -> {
+    # &["1", "e0", "e1", "e2", "e01", "e20", "e12", "e012"];
     s: b.s * a.s + b.e1 * a.e1 + b.e2 * a.e2 - b.e12 * a.e12,
     e0: b.e0 * a.s + b.s * a.e0 - b.e01 * a.e1 + b.e20 * a.e2 + b.e1 * a.e01 - b.e2 * a.e20 - b.e012 * a.e12 - b.e12 * a.e012,
     e1: b.e1 * a.s + b.s * a.e1 - b.e12 * a.e2 + b.e2 * a.e12,
@@ -356,6 +363,63 @@ involute = \a -> {
 normalize : Multivector -> Multivector
 normalize = \a ->
     scalarPart = (mul a (conjugate a)).s
-    norm = (Num.abs scalarPart)*(Num.abs scalarPart)
+    norm = (Num.abs scalarPart) * (Num.abs scalarPart)
 
     muls a (1.0 / norm)
+
+expect eq (scalar 5.0) { s: 5.0, e0: 0.0, e1: 0.0, e2: 0.0, e01: 0.0, e20: 0.0, e12: 0.0, e012: 0.0 }
+expect eq (line { a: 1.0, b: 2.0, c: 3.0 }) { s: 0.0, e0: 3.0, e1: 1.0, e2: 2.0, e01: 0.0, e20: 0.0, e12: 0.0, e012: 0.0 }
+expect eq (point { x: 4.0, y: 5.0 }) { s: 0.0, e0: 0.0, e1: 0.0, e2: 0.0, e01: 5.0, e20: 4.0, e12: 0.0, e012: 1.0 }
+expect
+    line1 = line { a: 0.0, b: 1.0, c: 1.0 } # horizontal line at y + 1 = 0
+    line2 = line { a: 1.0, b: -1.0, c: 1.0 } # diagonal line at x - y + 1 = 0
+    line3 = add line1 line2 # vertical line at x + 2 = 0
+    eq line3 (line { a: 1.0, b: 0.0, c: 2.0 })
+
+# Test geometric product
+# (1 + 2e0 + 3e1 + 4e2 + 5e01 + 6e20 + 7e12 + 8e012)
+# (9 + 10e0 + 11e1 + 12e2 + 13e01 + 14e20 + 15e12 + 16e012)
+expect
+    a = { s: 1, e0: 2, e1: 3, e2: 4, e01: 5, e20: 6, e12: 7, e012: 8 }
+    b = { s: 9, e0: 10, e1: 11, e2: 12, e01: 13, e20: 14, e12: 15, e012: 16 }
+    c = { s: -15, e0: -204, e1: 62, e2: 16, e01: 202, e20: 236, e12: 70, e012: 408 }
+    d = mul a b
+    eq d c
+
+# Test inner product
+# (1 + 2e0 + 3e1 + 4e2 + 5e01 + 6e20 + 7e12 + 8e012)
+# (9 + 10e0 + 11e1 + 12e2 + 13e01 + 14e20 + 15e12 + 16e012)
+expect
+    a = { s: 1, e0: 2, e1: 3, e2: 4, e01: 5, e20: 6, e12: 7, e012: 8 }
+    b = { s: 9, e0: 10, e1: 11, e2: 12, e01: 13, e20: 14, e12: 15, e012: 16 }
+    c = { s: -15, e0: -204, e1: 62, e2: 16, e01: 218, e20: 204, e12: 78, e012: 88 }
+    d = dot a b
+    eq d c
+
+# Test outer product
+# (1 + 2e0 + 3e1 + 4e2 + 5e01 + 6e20 + 7e12 + 8e012)
+# (9 + 10e0 + 11e1 + 12e2 + 13e01 + 14e20 + 15e12 + 16e012)
+expect
+    a = { s: 1, e0: 2, e1: 3, e2: 4, e01: 5, e20: 6, e12: 7, e012: 8 }
+    b = { s: 9, e0: 10, e1: 11, e2: 12, e01: 13, e20: 14, e12: 15, e012: 16 }
+    c = { s: 9, e0: 28, e1: 38, e2: 48, e01: 50, e20: 84, e12: 70, e012: 408 }
+    d = meet a b
+    eq d c
+
+# Test regressive product
+# (1 + 2e0 + 3e1 + 4e2 + 5e01 + 6e20 + 7e12 + 8e012)
+# (9 + 10e0 + 11e1 + 12e2 + 13e01 + 14e20 + 15e12 + 16e012)
+expect
+    a = { s: 1, e0: 2, e1: 3, e2: 4, e01: 5, e20: 6, e12: 7, e012: 8 }
+    b = { s: 9, e0: 10, e1: 11, e2: 12, e01: 13, e20: 14, e12: 15, e012: 16 }
+    c = { s: 408, e0: 104, e1: 152, e2: 152, e01: 184, e20: 208, e12: 232, e012: 128 }
+    d = join a b
+    eq d c
+
+# Test dual
+# (1 + 2e0 + 3e1 + 4e2 + 5e01 + 6e20 + 7e12 + 8e012)
+expect
+    a = { s: 1, e0: 2, e1: 3, e2: 4, e01: 5, e20: 6, e12: 7, e012: 8 }
+    b = dual a
+    c = { s: 8, e0: 7, e1: 6, e2: 5, e01: 4, e20: 3, e12: 2, e012: 1 }
+    eq b c
