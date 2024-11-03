@@ -93,59 +93,6 @@ zero = { s: 0.0, e0: 0.0, e1: 0.0, e2: 0.0, e01: 0.0, e20: 0.0, e12: 0.0, e012: 
 origin : Multivector
 origin = { s: 0.0, e0: 0.0, e1: 0.0, e2: 0.0, e01: 0.0, e20: 0.0, e12: 0.0, e012: 1.0 }
 
-## Helper function for comparing F32 values with tolerance
-eqF32 : F32, F32 -> Bool
-eqF32 = \i, j ->
-    if i > j then i - j < 0.0001 else j - i < 0.0001
-
-## Helper function for comparing Multivectors with tolerance
-eq : Multivector, Multivector -> Bool
-eq = \x, y ->
-    eqF32 x.s y.s
-    && eqF32 x.e0 y.e0
-    && eqF32 x.e1 y.e1
-    && eqF32 x.e2 y.e2
-    &&
-    eqF32 x.e01 y.e01
-    && eqF32 x.e20 y.e20
-    && eqF32 x.e12 y.e12
-    && eqF32 x.e012 y.e012
-
-pi : F32
-pi = 3.14159265358979323846
-
-## Scalar
-s : F32 -> Multivector
-s = \a -> { s: a, e0: 0.0, e1: 0.0, e2: 0.0, e01: 0.0, e20: 0.0, e12: 0.0, e012: 0.0 }
-
-## Basis vector
-e0 : F32 -> Multivector
-e0 = \b -> { s: 0.0, e0: b, e1: 0.0, e2: 0.0, e01: 0.0, e20: 0.0, e12: 0.0, e012: 0.0 }
-
-## Basis vector
-e1 : F32 -> Multivector
-e1 = \c -> { s: 0.0, e0: 0.0, e1: c, e2: 0.0, e01: 0.0, e20: 0.0, e12: 0.0, e012: 0.0 }
-
-## Basis vector
-e2 : F32 -> Multivector
-e2 = \d -> { s: 0.0, e0: 0.0, e1: 0.0, e2: d, e01: 0.0, e20: 0.0, e12: 0.0, e012: 0.0 }
-
-## Basis bivector
-e01 : F32 -> Multivector
-e01 = \e -> { s: 0.0, e0: 0.0, e1: 0.0, e2: 0.0, e01: e, e20: 0.0, e12: 0.0, e012: 0.0 }
-
-## Basis bivector
-e20 : F32 -> Multivector
-e20 = \f -> { s: 0.0, e0: 0.0, e1: 0.0, e2: 0.0, e01: 0.0, e20: f, e12: 0.0, e012: 0.0 }
-
-## Basis bivector
-e12 : F32 -> Multivector
-e12 = \g -> { s: 0.0, e0: 0.0, e1: 0.0, e2: 0.0, e01: 0.0, e20: 0.0, e12: g, e012: 0.0 }
-
-## Basis pseudoscalar
-e012 : F32 -> Multivector
-e012 = \h -> { s: 0.0, e0: 0.0, e1: 0.0, e2: 0.0, e01: 0.0, e20: 0.0, e12: 0.0, e012: h }
-
 ## Scalar (grade-0 element)
 scalar : F32 -> Multivector
 scalar = \a -> { s: a, e0: 0.0, e1: 0.0, e2: 0.0, e01: 0.0, e20: 0.0, e12: 0.0, e012: 0.0 }
@@ -172,14 +119,19 @@ idealPoint = \{ x, y } -> { s: 0.0, e0: 0.0, e1: 0.0, e2: 0.0, e01: y, e20: x, e
 ## by `angle` around the center point `cx,cy`
 rotor : { angle : F32, cx : F32, cy : F32 } -> Multivector
 rotor = \{ angle, cx, cy } ->
-    p = point { x: cx, y: cy }
     halfAngle = angle * 0.5
-    muls p ((Num.sin halfAngle) + (Num.cos halfAngle))
+    r = add (scalar (Num.cos halfAngle)) (muls (e12 1) (Num.sin halfAngle))
+
+    if eqF32 cx 0 && eqF32 cy 0 then
+        r
+    else
+        t = translator { dx: cx, dy: cy }
+        mul (mul t r) (conjugate t)
 
 ## A multivector that represents a translator which performs a translation by `dx,dy`
 translator : { dx : F32, dy : F32 } -> Multivector
 translator = \{ dx, dy } ->
-    direction = idealPoint { x: dx, y: -dy }
+    direction = idealPoint { x: dx, y: dy }
     add (scalar 1.0) (muls direction 0.5)
 
 ## Meet (wedge, outer product)
@@ -556,3 +508,56 @@ expect
     # NOTE the order matters here, if we swapped line1 and line2 we get the negative of the expected result
     # which we could also test for but we would need to compare with (muls exp -1)
     eq (normalize (meet line2 line1)) (normalize (point { x: 1, y: -2 }))
+
+## Helper function for comparing F32 values with tolerance
+eqF32 : F32, F32 -> Bool
+eqF32 = \i, j ->
+    if i > j then i - j < 0.0001 else j - i < 0.0001
+
+## Helper function for comparing Multivectors with tolerance
+eq : Multivector, Multivector -> Bool
+eq = \x, y ->
+    eqF32 x.s y.s
+    && eqF32 x.e0 y.e0
+    && eqF32 x.e1 y.e1
+    && eqF32 x.e2 y.e2
+    &&
+    eqF32 x.e01 y.e01
+    && eqF32 x.e20 y.e20
+    && eqF32 x.e12 y.e12
+    && eqF32 x.e012 y.e012
+
+pi : F32
+pi = 3.14159265358979323846
+
+## Scalar
+s : F32 -> Multivector
+s = \a -> { s: a, e0: 0.0, e1: 0.0, e2: 0.0, e01: 0.0, e20: 0.0, e12: 0.0, e012: 0.0 }
+
+## Basis vector
+e0 : F32 -> Multivector
+e0 = \b -> { s: 0.0, e0: b, e1: 0.0, e2: 0.0, e01: 0.0, e20: 0.0, e12: 0.0, e012: 0.0 }
+
+## Basis vector
+e1 : F32 -> Multivector
+e1 = \c -> { s: 0.0, e0: 0.0, e1: c, e2: 0.0, e01: 0.0, e20: 0.0, e12: 0.0, e012: 0.0 }
+
+## Basis vector
+e2 : F32 -> Multivector
+e2 = \d -> { s: 0.0, e0: 0.0, e1: 0.0, e2: d, e01: 0.0, e20: 0.0, e12: 0.0, e012: 0.0 }
+
+## Basis bivector
+e01 : F32 -> Multivector
+e01 = \e -> { s: 0.0, e0: 0.0, e1: 0.0, e2: 0.0, e01: e, e20: 0.0, e12: 0.0, e012: 0.0 }
+
+## Basis bivector
+e20 : F32 -> Multivector
+e20 = \f -> { s: 0.0, e0: 0.0, e1: 0.0, e2: 0.0, e01: 0.0, e20: f, e12: 0.0, e012: 0.0 }
+
+## Basis bivector
+e12 : F32 -> Multivector
+e12 = \g -> { s: 0.0, e0: 0.0, e1: 0.0, e2: 0.0, e01: 0.0, e20: 0.0, e12: g, e012: 0.0 }
+
+## Basis pseudoscalar
+e012 : F32 -> Multivector
+e012 = \h -> { s: 0.0, e0: 0.0, e1: 0.0, e2: 0.0, e01: 0.0, e20: 0.0, e12: 0.0, e012: h }
